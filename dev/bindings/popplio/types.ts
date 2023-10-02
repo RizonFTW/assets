@@ -99,6 +99,22 @@ export interface AppListResponse {
 }
 
 //////////
+// source: asset.go
+
+export interface Asset {
+  type: string;
+  content_type: string;
+  content: string;
+}
+export interface AssetMetadata {
+  exists: boolean;
+  path?: string;
+  default_path: string;
+  size?: number /* int64 */;
+  errors?: string[];
+}
+
+//////////
 // source: auth.go
 
 export interface AuthorizeRequest {
@@ -188,7 +204,7 @@ export interface IndexBot {
   nsfw: boolean;
   tags: string[];
   premium: boolean;
-  banner: string | null /* nullable */;
+  banner?: AssetMetadata;
 }
 export interface BotStats {
   servers: number /* uint64 */;
@@ -224,7 +240,7 @@ export interface Bot {
   clicks: number /* int */;
   unique_clicks: number /* int64 */; // Must be parsed internally
   invite_clicks: number /* int */;
-  banner: string | null /* nullable */;
+  banner?: AssetMetadata;
   invite: string;
   type: string;
   vanity_ref: string /* uuid */;
@@ -255,7 +271,6 @@ export interface CreateBot {
   long: string; // impld
   prefix: string; // impld
   invite: string; // impld
-  banner?: string; // impld
   library: string; // impld
   extra_links: Link[]; // Impld
   tags: string[];
@@ -268,7 +283,6 @@ export interface BotSettingsUpdate {
   long: string; // impld
   prefix: string; // impld
   invite: string; // impld
-  banner?: string; // impld
   library: string; // impld
   extra_links: Link[]; // Impld
   tags: string[];
@@ -561,7 +575,7 @@ export interface IndexServer {
   nsfw: boolean;
   tags: string[];
   premium: boolean;
-  banner: string | null /* nullable */;
+  banner?: AssetMetadata;
 }
 /**
  * @ci table=servers
@@ -584,7 +598,7 @@ export interface Server {
   extra_links: Link[];
   team_owner?: Team; // Must be parsed internally
   invite_clicks: number /* int */;
-  banner: string | null /* nullable */;
+  banner?: AssetMetadata;
   clicks: number /* int */;
   unique_clicks: number /* int64 */; // Must be parsed internally
   nsfw: boolean;
@@ -598,7 +612,6 @@ export interface Server {
 export interface ServerSettingsUpdate {
   short: string; // impld
   long: string; // impld
-  banner?: string; // impld
   extra_links: Link[]; // Impld
   tags: string[];
   nsfw: boolean;
@@ -683,7 +696,7 @@ export interface Team {
   id: string;
   name: string;
   avatar: string;
-  banner: string | null /* nullable */;
+  banner?: AssetMetadata;
   short: string | null /* nullable */;
   tags: string[];
   votes: number /* int */;
@@ -709,7 +722,6 @@ export interface TeamMember {
 export interface CreateEditTeam {
   name: string;
   avatar: string;
-  banner?: string; // impld
   short?: string; // impld
   tags?: string[];
   extra_links?: Link[];
@@ -887,6 +899,8 @@ export interface Webhook {
 }
 export type WebhookType = string;
 export const WebhookTypeText: WebhookType = "text";
+export const WebhookTypeTextArray: WebhookType = "text[]";
+export const WebhookTypeLinkArray: WebhookType = "link[]";
 export const WebhookTypeNumber: WebhookType = "number";
 export const WebhookTypeChangeset: WebhookType = "changeset";
 export const WebhookTypeBoolean: WebhookType = "boolean";
