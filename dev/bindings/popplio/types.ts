@@ -110,7 +110,9 @@ export interface AssetMetadata {
   exists: boolean;
   path?: string;
   default_path: string;
+  type?: string;
   size?: number /* int64 */;
+  last_modified?: string /* RFC3339 */;
   errors?: string[];
 }
 
@@ -204,7 +206,7 @@ export interface IndexBot {
   nsfw: boolean;
   tags: string[];
   premium: boolean;
-  banner?: AssetMetadata;
+  banner?: AssetMetadata; // Must be parsed internally
 }
 export interface BotStats {
   servers: number /* uint64 */;
@@ -240,7 +242,7 @@ export interface Bot {
   clicks: number /* int */;
   unique_clicks: number /* int64 */; // Must be parsed internally
   invite_clicks: number /* int */;
-  banner?: AssetMetadata;
+  banner?: AssetMetadata; // Must be parsed internally
   invite: string;
   type: string;
   vanity_ref: string /* uuid */;
@@ -450,8 +452,7 @@ export interface IndexBotPack {
 export interface Partner {
   id: string;
   name: string;
-  image_type: string;
-  image: string; // Must be parsed internally
+  avatar?: AssetMetadata; // Must be parsed internally
   short: string;
   links: Link[];
   type: string;
@@ -575,7 +576,7 @@ export interface IndexServer {
   nsfw: boolean;
   tags: string[];
   premium: boolean;
-  banner?: AssetMetadata;
+  banner?: AssetMetadata; // Must be parsed internally
 }
 /**
  * @ci table=servers
@@ -598,7 +599,7 @@ export interface Server {
   extra_links: Link[];
   team_owner?: Team; // Must be parsed internally
   invite_clicks: number /* int */;
-  banner?: AssetMetadata;
+  banner?: AssetMetadata; // Must be parsed internally
   clicks: number /* int */;
   unique_clicks: number /* int64 */; // Must be parsed internally
   nsfw: boolean;
@@ -695,7 +696,7 @@ export interface PermissionData {
 export interface Team {
   id: string;
   name: string;
-  avatar: string;
+  avatar?: AssetMetadata;
   banner?: AssetMetadata;
   short: string | null /* nullable */;
   tags: string[];
@@ -721,7 +722,6 @@ export interface TeamMember {
 }
 export interface CreateEditTeam {
   name: string;
-  avatar: string;
   short?: string; // impld
   tags?: string[];
   extra_links?: Link[];
