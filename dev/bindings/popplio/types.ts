@@ -104,7 +104,7 @@ export interface AppListResponse {
 export interface Asset {
   type: string;
   content_type: string;
-  content: string;
+  content: number /* uint8 */[];
 }
 export interface AssetMetadata {
   exists: boolean;
@@ -320,6 +320,9 @@ export interface DiscordBotMeta {
 }
 export interface PatchBotTeam {
   team_id: string;
+}
+export interface RandomBots {
+  bots: IndexBot[];
 }
 
 //////////
@@ -551,6 +554,7 @@ export interface SearchQuery {
 }
 export interface SearchResponse {
   bots: IndexBot[];
+  servers: IndexServer[];
 }
 
 //////////
@@ -609,6 +613,7 @@ export interface Server {
   start_premium_period: string | null /* RFC3339, nullable */;
   premium_period_length: any /* time.Duration */;
   captcha_opt_out: boolean;
+  created_at: string | null /* RFC3339, nullable */;
 }
 export interface ServerSettingsUpdate {
   short: string; // impld
@@ -617,6 +622,19 @@ export interface ServerSettingsUpdate {
   tags: string[];
   nsfw: boolean;
   captcha_opt_out: boolean;
+}
+/**
+ * List Index
+ */
+export interface ListIndexServer {
+  certified: IndexServer[];
+  premium: IndexServer[];
+  most_viewed: IndexServer[];
+  recently_added: IndexServer[];
+  top_voted: IndexServer[];
+}
+export interface RandomServers {
+  servers: IndexServer[];
 }
 
 //////////
