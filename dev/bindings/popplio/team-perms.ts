@@ -11,7 +11,8 @@ export enum Permission {
 	TestWebhooks = "test_webhooks", // Test {entity} Webhooks => Test {entity} webhooks. Note that this is a separate permission from 'Edit {entity} Webhooks' and is required to test webhooks.
 	GetWebhookLogs = "get_webhook_logs", // Get {entity} Webhook Logs => Get {entity} webhook logs.
 	DeleteWebhookLogs = "delete_webhook_logs", // Delete {entity} Webhook Logs => Delete {entity} webhook logs. Usually requires 'Get {entity} Webhook Logs' to be useful.
-	Assets = "assets", // Manage {entity} Assets => Upload and manage assets for {entity} on the team
+	UploadAssets = "upload_assets", // Upload {entity} Assets => Upload assets for {entity} on the team
+	DeleteAssets = "delete_assets", // Delete {entity} Assets => Delete assets for {entity} on the team
 	Delete = "delete", // Delete {entity} => Delete a {entity} from the team. This is a very dangerous permission and should usually never be given to anyone.
 	Owner = "*", // {entity} Admin => Has full control on {entity}'s.
 }

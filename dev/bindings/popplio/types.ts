@@ -328,9 +328,14 @@ export interface RandomBots {
 //////////
 // source: changelogs.go
 
+/**
+ * @ci table=changelogs
+ * Changelogs for the list
+ */
 export interface ChangelogEntry {
   version: string;
   extra_description: string;
+  github_html: string | null /* nullable */;
   prerelease: boolean;
   added: string[];
   updated: string[];
@@ -635,24 +640,6 @@ export interface ListIndexServer {
 }
 export interface RandomServers {
   servers: IndexServer[];
-}
-
-//////////
-// source: srvdiscovery.go
-
-export interface ServiceDiscovery {
-  services: SDService[];
-}
-export interface SDService {
-  id: string;
-  prod_url: string;
-  staging_url?: string;
-  docs?: string;
-  description: string;
-  needs_staging?: boolean;
-}
-export interface SDList {
-  services: string[];
 }
 
 //////////
