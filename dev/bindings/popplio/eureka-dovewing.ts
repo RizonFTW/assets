@@ -15,5 +15,6 @@ export interface PlatformUser {
   avatar: string;
   bot: boolean;
   status: PlatformStatus;
+  flags: string[];
   extra_data: { [key: string]: any};
 }

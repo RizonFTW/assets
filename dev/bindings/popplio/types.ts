@@ -254,11 +254,10 @@ export interface Bot {
   uptime: number /* int */;
   total_uptime: number /* int */;
   uptime_last_checked: string | null /* RFC3339, nullable */;
-  claimed_by: string | null /* nullable */;
   approval_note: string | null /* nullable */;
   created_at: string | null /* RFC3339, nullable */;
+  claimed_by: string | null /* nullable */;
   last_claimed: string | null /* RFC3339, nullable */;
-  legacy_webhooks: boolean; // Must be parsed internally
   team_owner?: Team; // Must be parsed internally
   captcha_opt_out: boolean;
 }
@@ -317,6 +316,7 @@ export interface DiscordBotMeta {
   description: string;
   tags: string[];
   fallback: boolean;
+  fetch_errors: { [key: string]: string};
 }
 export interface PatchBotTeam {
   team_id: string;
@@ -336,10 +336,12 @@ export interface ChangelogEntry {
   version: string;
   extra_description: string;
   github_html: string | null /* nullable */;
+  published: boolean;
   prerelease: boolean;
   added: string[];
   updated: string[];
   removed: string[];
+  created_at: string /* RFC3339 */;
 }
 export interface Changelog {
   entries: ChangelogEntry[];
@@ -384,6 +386,7 @@ export interface Vanity {
   target_id: string;
   target_type: string;
   code: string;
+  created_at: string /* RFC3339 */;
 }
 
 //////////
@@ -527,10 +530,21 @@ export interface Review {
   target_type: string;
   target_id: string;
   author?: PlatformUser /* from eureka-dovewing.ts */;
+  owner_review: boolean;
   content: string;
   stars: number /* int32 */;
   created_at: string /* RFC3339 */;
   parent_id: string /* uuid */;
+}
+export interface CreateReview {
+  content: string;
+  stars: number /* int32 */;
+  parent_id: string;
+  owner_review: boolean;
+}
+export interface EditReview {
+  content: string;
+  stars: number /* int32 */;
 }
 export interface ReviewList {
   reviews: Review[];
@@ -552,12 +566,15 @@ export interface TagFilter {
 }
 export interface SearchQuery {
   query: string;
+  target_types: string[]; // Defaults to 'bot' if unset
   servers: SearchFilter;
   votes: SearchFilter;
   shards: SearchFilter;
+  total_members: SearchFilter;
   tags: TagFilter;
 }
 export interface SearchResponse {
+  target_types: string[];
   bots: IndexBot[];
   servers: IndexServer[];
 }
@@ -619,6 +636,8 @@ export interface Server {
   premium_period_length: any /* time.Duration */;
   captcha_opt_out: boolean;
   created_at: string | null /* RFC3339, nullable */;
+  claimed_by: string | null /* nullable */;
+  last_claimed: string | null /* RFC3339, nullable */;
 }
 export interface ServerSettingsUpdate {
   short: string; // impld
@@ -645,20 +664,24 @@ export interface RandomServers {
 //////////
 // source: stafftemplates.go
 
-export interface StaffTemplateList {
-  templates: StaffTemplateMeta[];
-}
-export interface StaffTemplateMeta {
+export interface StaffTemplateType {
+  id: string;
   name: string;
   icon: string;
-  description: string;
-  templates: StaffTemplate[];
+  short: string;
 }
 export interface StaffTemplate {
+  id: string;
   name: string;
   emoji: string;
   tags: string[];
   description: string;
+  type: string;
+  created_at: string /* RFC3339 */;
+}
+export interface StaffTemplateList {
+  template_types: StaffTemplateType[];
+  templates: StaffTemplate[];
 }
 
 //////////
@@ -685,6 +708,32 @@ export interface StaffTeam {
 }
 
 //////////
+// source: task.go
+
+export interface TaskCreateResponse {
+  task_id: string;
+  task_key: string | null /* nullable */;
+  allow_unauthenticated: boolean;
+  task_name: string;
+  expiry: any /* pgtype.Interval */;
+}
+/**
+ * @ci table=tasks
+ * Tasks are background processes that can be run on the server.
+ */
+export interface Task {
+  task_id: string;
+  allow_unauthenticated: boolean;
+  task_name: string;
+  output: { [key: string]: any};
+  statuses: { [key: string]: any}[];
+  for_user: string | null /* nullable */;
+  expiry: any /* pgtype.Interval */;
+  state: string;
+  created_at: string | null /* RFC3339, nullable */;
+}
+
+//////////
 // source: teams.go
 
 export interface PermissionDataOverride {
@@ -698,6 +747,10 @@ export interface PermissionData {
   supported_entities: string[];
   data_override?: { [key: string]: PermissionDataOverride | undefined};
 }
+/**
+ * @ci table=teams
+ * Team represents a team on Infinity List.
+ */
 export interface Team {
   id: string;
   name: string;
@@ -705,9 +758,13 @@ export interface Team {
   banner?: AssetMetadata;
   short: string | null /* nullable */;
   tags: string[];
+  vote_banned: boolean;
   votes: number /* int */;
   extra_links: Link[];
   entities?: TeamEntities; // Must be handled internally
+  nsfw: boolean;
+  vanity_ref: string /* uuid */;
+  vanity: string; // Must be parsed internally
 }
 export interface TeamBulkFetch {
   teams: Team[];
@@ -724,15 +781,17 @@ export interface TeamMember {
   flags: string[];
   created_at: string /* RFC3339 */;
   mentionable: boolean;
+  data_holder: boolean;
 }
 export interface CreateEditTeam {
   name: string;
   short?: string; // impld
   tags?: string[];
   extra_links?: Link[];
+  nsfw?: boolean;
 }
 export interface CreateTeamResponse {
-  team_id: string /* uuid */;
+  team_id: string;
 }
 export interface PermissionResponse {
   perms: PermissionData[];
@@ -744,6 +803,7 @@ export interface AddTeamMember {
 export interface EditTeamMember {
   perm_update?: PermissionUpdate;
   mentionable?: boolean;
+  data_holder?: boolean;
 }
 export interface PermissionUpdate {
   add: string[];
@@ -767,6 +827,7 @@ export interface Ticket {
   close_user?: PlatformUser /* from eureka-dovewing.ts */;
   open: boolean;
   created_at: string /* RFC3339 */;
+  enc_key: string | null /* nullable */;
 }
 export interface Message {
   id: string;
@@ -775,7 +836,14 @@ export interface Message {
   embeds: (any /* discordgo.MessageEmbed */ | undefined)[];
   author_id: string;
   author?: PlatformUser /* from eureka-dovewing.ts */;
-  attachments: (any /* discordgo.MessageAttachment */ | undefined)[];
+  attachments: Attachment[];
+}
+export interface Attachment {
+  id: string; // ID of the attachment within the ticket
+  name: string; // Name of the attachment
+  content_type: string; // Content type of the attachment
+  size: number /* int */; // Size of the attachment in bytes
+  errors: string[]; // Non-fatal errors that occurred while uploading the attachment
 }
 
 //////////
@@ -891,15 +959,18 @@ export interface HCaptchaInfo {
 // source: webhook.go
 
 /**
- * @ci table=webhooks, unfilled=1
- * Webhook (omits secret)
+ * @ci table=webhooks
+ * Represents a webhook on IBL
  */
 export interface Webhook {
   id: string /* uuid */;
-  url: string;
+  name: string;
   target_id: string;
   target_type: string;
+  url: string;
   broken: boolean;
+  simple_auth: boolean;
+  event_whitelist: string[];
   created_at: string /* RFC3339 */;
 }
 export type WebhookType = string;
@@ -915,6 +986,7 @@ export const WebhookTypeBoolean: WebhookType = "boolean";
  */
 export interface WebhookLogEntry {
   id: string /* uuid */;
+  webhook_id: string /* uuid */;
   target_id: string;
   target_type: string;
   user?: PlatformUser /* from eureka-dovewing.ts */; // Must be parsed internally
@@ -929,9 +1001,13 @@ export interface WebhookLogEntry {
   status_code: number /* int */;
 }
 export interface PatchWebhook {
+  webhook_id: string;
+  name: string;
   webhook_url: string;
   webhook_secret: string;
-  clear: boolean;
+  simple_auth: boolean;
+  event_whitelist: string[];
+  delete: boolean;
 }
 export interface GetTestWebhookMeta {
   data: TestWebhookType[];
@@ -943,6 +1019,7 @@ export interface TestWebhookType {
 export interface TestWebhookVariables {
   id: string;
   name: string;
+  description: string;
   value: string;
   type: WebhookType;
 }
