@@ -86,6 +86,7 @@ export interface AppMeta {
 }
 export interface AppResponse {
   app_id: string;
+  user?: PlatformUser /* from eureka-dovewing.ts */;
   user_id: string;
   questions: Question[];
   answers: { [key: string]: string};
@@ -643,6 +644,7 @@ export interface ServerSettingsUpdate {
   short: string; // impld
   long: string; // impld
   extra_links: Link[]; // Impld
+  state: string;
   tags: string[];
   nsfw: boolean;
   captcha_opt_out: boolean;
@@ -858,18 +860,7 @@ export interface User {
   itag: string /* uuid */;
   user?: PlatformUser /* from eureka-dovewing.ts */; // Must be handled internally
   experiments: string[];
-  staff_onboarded: boolean;
-  staff_onboard_state: string;
-  staff_onboard_last_start_time: string | null /* RFC3339, nullable */;
-  staff_onboard_guild: string | null /* nullable */;
-  staff_rpc_last_verify: string | null /* RFC3339, nullable */;
-  staff: boolean;
-  admin: boolean;
-  hadmin: boolean;
   certified: boolean;
-  ibldev: boolean;
-  iblhdev: boolean;
-  owner: boolean;
   bot_developer: boolean;
   bug_hunters: boolean;
   captcha_sponsor_enabled: boolean;
@@ -887,12 +878,6 @@ export interface UserPerm {
   banned: boolean;
   captcha_sponsor_enabled: boolean;
   vote_banned: boolean;
-  staff: boolean;
-  admin: boolean;
-  hadmin: boolean;
-  ibldev: boolean;
-  iblhdev: boolean;
-  owner: boolean;
 }
 export interface ProfileUpdate {
   about: string;
