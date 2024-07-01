@@ -2,4 +2,24 @@
 import type { RPCField } from "./RPCField";
 import type { TargetType } from "./TargetType";
 
-export interface RPCWebAction { id: string, label: string, description: string, fields: Array<RPCField>, supported_target_types: Array<TargetType>, }
+export type RPCWebAction = { 
+/**
+ * ID of the RPC action
+ */
+id: string, 
+/**
+ * Label of the RPC action
+ */
+label: string, 
+/**
+ * Description of the RPC action
+ */
+description: string, 
+/**
+ * Fields of the RPC action
+ */
+fields: Array<RPCField>, 
+/**
+ * Target types supported by the RPC action
+ */
+supported_target_types: Array<TargetType>, };

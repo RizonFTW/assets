@@ -21,7 +21,7 @@ CREATE TABLE webhooks (
 );
 */
 
-// @ci table=webhooks
+// @ci table=webhooks unfilled=1
 //
 // Represents a webhook on IBL
 type Webhook struct {
@@ -30,10 +30,20 @@ type Webhook struct {
 	TargetID       string      `db:"target_id" json:"target_id" description:"The target ID."`
 	TargetType     string      `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
 	Url            string      `db:"url" json:"url" description:"The URL of the webhook."`
-	Broken         bool        `db:"broken" json:"broken" description:"Whether the webhook is broken."`
+	Broken         bool        `db:"broken" json:"broken" description:"Whether the webhook is marked as broken or not."`
+	FailedRequests int         `db:"failed_requests" json:"failed_requests" description:"The number of failed requests to the webhook."`
 	SimpleAuth     bool        `db:"simple_auth" json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
 	EventWhitelist []string    `db:"event_whitelist" json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
 	CreatedAt      time.Time   `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
+}
+
+// Represents the data to be sent to create a webhook
+type CreateEditWebhook struct {
+	Name           string   `json:"name" description:"The name of the webhook." validate:"required"`
+	Url            string   `json:"url" description:"The URL of the webhook." validate:"required"`
+	Secret         string   `json:"secret" description:"The secret of the webhook, only needed for custom (non-discord) webhooks"`
+	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
+	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
 }
 
 type WebhookType = string
@@ -51,31 +61,23 @@ const (
 //
 // Webhook log
 type WebhookLogEntry struct {
-	ID         pgtype.UUID             `db:"id" json:"id" description:"The ID of the webhook log."`
-	WebhookID  pgtype.UUID             `db:"webhook_id" json:"webhook_id" description:"The ID of the webhook."`
-	TargetID   string                  `db:"target_id" json:"target_id" description:"The target ID."`
-	TargetType string                  `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
-	UserID     string                  `db:"user_id" json:"-"`
-	User       *dovetypes.PlatformUser `db:"-" json:"user" description:"User ID the webhook is intended for" ci:"internal"` // Must be parsed internally
-	URL        string                  `db:"url" json:"url" description:"The URL of the webhook."`
-	Data       map[string]any          `db:"data" json:"data" description:"The data of the webhook."`
-	Response   pgtype.Text             `db:"response" json:"response" description:"The response of the webhook request."`
-	CreatedAt  time.Time               `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
-	State      string                  `db:"state" json:"state" description:"The state of the webhook."`
-	Tries      int                     `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
-	LastTry    time.Time               `db:"last_try" json:"last_try" description:"The time of the last send try."`
-	BadIntent  bool                    `db:"bad_intent" json:"bad_intent" description:"Whether the webhook was sent with bad intent."`
-	StatusCode int                     `db:"status_code" json:"status_code" description:"The status code of the webhook request."`
-}
-
-type PatchWebhook struct {
-	WebhookID      string   `json:"webhook_id" description:"The ID of the webhook to update. If not set, the webhook will be created."`
-	Name           string   `json:"name" description:"The name of the webhook."`
-	WebhookURL     string   `json:"webhook_url" description:"The URL of the webhook."`
-	WebhookSecret  string   `json:"webhook_secret" description:"The secret of the webhook."`
-	SimpleAuth     bool     `json:"simple_auth" description:"Whether the webhook should use simple auth (unencrypted, just authentication headers) or not."`
-	EventWhitelist []string `json:"event_whitelist" description:"The events that are whitelisted for this webhook. Note that if unset, all events are whitelisted."`
-	Delete         bool     `json:"delete" description:"Whether to clear the webhook."`
+	ID              pgtype.UUID             `db:"id" json:"id" description:"The ID of the webhook log."`
+	WebhookID       pgtype.UUID             `db:"webhook_id" json:"webhook_id" description:"The ID of the webhook."`
+	TargetID        string                  `db:"target_id" json:"target_id" description:"The target ID."`
+	TargetType      string                  `db:"target_type" json:"target_type" description:"The target type (bot/team etc.)."`
+	UserID          string                  `db:"user_id" json:"-"`
+	User            *dovetypes.PlatformUser `db:"-" json:"user" description:"User ID the webhook is intended for" ci:"internal"` // Must be parsed internally
+	URL             string                  `db:"url" json:"url" description:"The URL of the webhook."`
+	Data            map[string]any          `db:"data" json:"data" description:"The data of the webhook."`
+	Response        pgtype.Text             `db:"response" json:"response" description:"The response of the webhook request."`
+	CreatedAt       time.Time               `db:"created_at" json:"created_at" description:"The time when the webhook was created."`
+	State           string                  `db:"state" json:"state" description:"The state of the webhook."`
+	Tries           int                     `db:"tries" json:"tries" description:"The number of send tries attempted on this webhook."`
+	LastTry         time.Time               `db:"last_try" json:"last_try" description:"The time of the last send try."`
+	BadIntent       bool                    `db:"bad_intent" json:"bad_intent" description:"Whether the webhook was sent with bad intent."`
+	StatusCode      int                     `db:"status_code" json:"status_code" description:"The status code of the webhook request."`
+	RequestHeaders  map[string]any          `db:"request_headers" json:"request_headers" description:"The headers of the webhook request."`
+	ResponseHeaders map[string]any          `db:"response_headers" json:"response_headers" description:"The headers of the webhook response."`
 }
 
 type GetTestWebhookMeta struct {

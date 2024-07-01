@@ -79,6 +79,7 @@ export interface Position {
   questions: Question[];
   hidden: boolean;
   closed: boolean;
+  cooldown: any /* timex.Duration */;
 }
 export interface AppMeta {
   positions: Position[];
@@ -140,6 +141,36 @@ export interface TestAuth {
   target_id: string;
   token: string;
 }
+/**
+ * @ci table=api_sessions ignore_fields=token
+ * Represents a session that can be used to authorize/identify a user
+ */
+export interface Session {
+  id: string;
+  name?: string | null /* nullable */;
+  created_at: string /* RFC3339 */;
+  type: string;
+  target_type: string;
+  target_id: string;
+  perm_limits: string[];
+  expiry: string /* RFC3339 */;
+}
+/**
+ * A list of sessions.
+ */
+export interface SessionList {
+  sessions: (Session | undefined)[];
+}
+export interface CreateSession {
+  name: string;
+  type: string;
+  perm_limits: string[];
+  expiry: number /* int64 */;
+}
+export interface CreateSessionResponse {
+  token: string;
+  session_id: string;
+}
 
 //////////
 // source: blog.go
@@ -186,7 +217,6 @@ export interface EditBlogPost {
 //////////
 // source: bot.go
 
-export type BotFlags = string;
 /**
  * @ci table=bots, unfilled=1
  * Represents a 'index bot' (a small subset of the bot object for use in cards etc.)
@@ -198,7 +228,8 @@ export interface IndexBot {
   type: string;
   vanity_ref: string /* uuid */;
   vanity: string; // Must be parsed internally
-  votes: number /* int */;
+  votes: number /* int */; // Votes are retrieved from entity_votes
+  approximate_votes: number /* int */;
   shards: number /* int */;
   library: string;
   invite_clicks: number /* int */;
@@ -208,6 +239,7 @@ export interface IndexBot {
   tags: string[];
   premium: boolean;
   banner?: AssetMetadata; // Must be parsed internally
+  created_at: string | null /* RFC3339, nullable */;
 }
 export interface BotStats {
   servers: number /* uint64 */;
@@ -216,7 +248,7 @@ export interface BotStats {
   shard_list: number /* uint64 */[];
 }
 /**
- * @ci table=bots
+ * @ci table=bots, ignore_fields=api_token+unique_clicks
  * Bot represents a bot.
  */
 export interface Bot {
@@ -225,12 +257,11 @@ export interface Bot {
   client_id: string;
   extra_links: Link[];
   tags: string[];
-  flags: BotFlags[];
   prefix: string;
   user?: PlatformUser /* from eureka-dovewing.ts */; // Must be parsed internally
   owner?: PlatformUser /* from eureka-dovewing.ts */; // Must be parsed internally
   short: string;
-  long?: string;
+  long?: string; // Must be parsed internally
   library: string;
   nsfw: boolean;
   premium: boolean;
@@ -239,7 +270,8 @@ export interface Bot {
   shards: number /* int */;
   shard_list: number /* int */[];
   users: number /* int */;
-  votes: number /* int */;
+  votes: number /* int */; // Votes are retrieved from entity_votes
+  approximate_votes: number /* int */;
   clicks: number /* int */;
   unique_clicks: number /* int64 */; // Must be parsed internally
   invite_clicks: number /* int */;
@@ -250,7 +282,7 @@ export interface Bot {
   vanity: string; // Must be parsed internally
   vote_banned: boolean;
   start_premium_period: string | null /* RFC3339, nullable */;
-  premium_period_length: any /* time.Duration */;
+  premium_period_length: any /* timex.Duration */;
   cert_reason: string | null /* nullable */;
   uptime: number /* int */;
   total_uptime: number /* int */;
@@ -258,9 +290,29 @@ export interface Bot {
   approval_note: string | null /* nullable */;
   created_at: string | null /* RFC3339, nullable */;
   claimed_by: string | null /* nullable */;
+  updated_at: string | null /* RFC3339, nullable */;
   last_claimed: string | null /* RFC3339, nullable */;
   team_owner?: Team; // Must be parsed internally
   captcha_opt_out: boolean;
+  cache_server_uninvitable: string | null /* nullable */;
+  cache_server?: CacheServer; // Must be parsed internally
+}
+export interface CacheServer {
+  guild_id: string;
+  bots_role: string;
+  system_bots_role: string;
+  logs_channel: string;
+  staff_role: string;
+  welcome_channel: string;
+  invite_code: string;
+  name: string;
+  created_at: string | null /* RFC3339, nullable */;
+  bots?: CacheServerBot[]; // Must be parsed internally
+}
+export interface CacheServerBot {
+  bot_id: string;
+  created_at: string | null /* RFC3339, nullable */;
+  added: number /* int */;
 }
 /**
  * @ci table=bots, unfilled=1
@@ -301,7 +353,7 @@ export interface ListIndexBot {
   certified: IndexBot[];
   premium: IndexBot[];
   most_viewed: IndexBot[];
-  packs: IndexBotPack[];
+  packs: BotPack[];
   recently_added: IndexBot[];
   top_voted: IndexBot[];
 }
@@ -382,13 +434,6 @@ export interface PagedResult<T extends any> {
   per_page: number /* uint64 */;
   results: T;
 }
-export interface Vanity {
-  itag: string /* uuid */;
-  target_id: string;
-  target_type: string;
-  code: string;
-  created_at: string /* RFC3339 */;
-}
 
 //////////
 // source: notifications.go
@@ -430,28 +475,20 @@ export interface NotifGetList {
 // source: pack.go
 
 /**
+ * @ci table=packs, unfilled=1
  * Represents a Bot Pack
  */
 export interface BotPack {
-  owner?: PlatformUser /* from eureka-dovewing.ts */;
+  owner?: PlatformUser /* from eureka-dovewing.ts */; // Owner must be resolved internally from the owner field
   name: string;
   short: string;
-  votes: number /* int */;
+  votes: number /* int */; // Votes are retrieved from entity_votes
   tags: string[];
   url: string;
   created_at: string /* RFC3339 */;
   bot_ids: string[];
-  bots: IndexBot[];
-}
-export interface IndexBotPack {
-  owner_id: string;
-  name: string;
-  short: string;
-  votes: number /* int */;
-  tags: string[];
-  url: string;
-  created_at: string /* RFC3339 */;
-  bot_ids: string[];
+  bots: IndexBot[]; // Bots must be resolved internally from their IDs
+  vote_banned: boolean;
 }
 
 //////////
@@ -470,6 +507,7 @@ export interface Partner {
   type: string;
   created_at: string /* RFC3339 */;
   user?: PlatformUser /* from eureka-dovewing.ts */; // Must be parsed internally
+  bot_id?: string;
 }
 /**
  * @ci table=partner_types
@@ -576,8 +614,8 @@ export interface SearchQuery {
 }
 export interface SearchResponse {
   target_types: string[];
-  bots: IndexBot[];
-  servers: IndexServer[];
+  bots?: IndexBot[];
+  servers?: IndexServer[];
 }
 
 //////////
@@ -590,14 +628,16 @@ export interface SearchResponse {
 export interface IndexServer {
   server_id: string;
   name: string;
-  avatar: string;
+  avatar?: AssetMetadata; // This is an asset that must be validated/loaded from CDN
   total_members: number /* int */;
   online_members: number /* int */;
   short: string;
   type: string;
+  state: string;
   vanity_ref: string /* uuid */;
   vanity: string; // Must be parsed internally
-  votes: number /* int */;
+  votes: number /* int */; // Votes are retrieved from entity_votes
+  approximate_votes: number /* int */;
   invite_clicks: number /* int */;
   clicks: number /* int */;
   nsfw: boolean;
@@ -606,21 +646,20 @@ export interface IndexServer {
   banner?: AssetMetadata; // Must be parsed internally
 }
 /**
- * @ci table=servers
+ * @ci table=servers, ignore_fields=invite+blacklisted_users+api_token+unique_clicks
  * Server represents a server.
  */
 export interface Server {
   server_id: string;
   name: string;
-  avatar: string;
+  avatar?: AssetMetadata; // This is an asset that must be validated/loaded from CDN
   total_members: number /* int */;
   online_members: number /* int */;
   short: string;
-  long: string;
+  long: string; // Must be parsed internally
   type: string;
   state: string;
   tags: string[];
-  flags: string[];
   vanity_ref: string /* uuid */;
   vanity: string; // Must be parsed internally
   extra_links: Link[];
@@ -630,7 +669,8 @@ export interface Server {
   clicks: number /* int */;
   unique_clicks: number /* int64 */; // Must be parsed internally
   nsfw: boolean;
-  votes: number /* int */;
+  approximate_votes: number /* int */;
+  votes: number /* int */; // Votes are retrieved from entity_votes
   vote_banned: boolean;
   premium: boolean;
   start_premium_period: string | null /* RFC3339, nullable */;
@@ -639,6 +679,7 @@ export interface Server {
   created_at: string | null /* RFC3339, nullable */;
   claimed_by: string | null /* nullable */;
   last_claimed: string | null /* RFC3339, nullable */;
+  login_required_for_invite: boolean;
 }
 export interface ServerSettingsUpdate {
   short: string; // impld
@@ -648,6 +689,7 @@ export interface ServerSettingsUpdate {
   tags: string[];
   nsfw: boolean;
   captcha_opt_out: boolean;
+  login_required_for_invite: boolean;
 }
 /**
  * List Index
@@ -661,6 +703,63 @@ export interface ListIndexServer {
 }
 export interface RandomServers {
   servers: IndexServer[];
+}
+
+//////////
+// source: shop.go
+
+/**
+ * @ci table=shop_item_benefits
+ * ShopItemBenefit represents a benefit of a shop item which can then be supported in code for certain functionality.
+ */
+export interface ShopItemBenefit {
+  id: string;
+  name: string;
+  description: string;
+  created_at: string /* RFC3339 */;
+  last_updated: string /* RFC3339 */;
+  created_by?: PlatformUser /* from eureka-dovewing.ts */; // CreatedByID must be parsed internally
+  updated_by?: PlatformUser /* from eureka-dovewing.ts */; // UpdatedByID must be parsed internally
+  target_types: string[];
+}
+/**
+ * @ci table=shop_items
+ * ShopItems represent items that can be purchased in the shop.
+ */
+export interface ShopItem {
+  id: string;
+  name: string;
+  cents: number /* float64 */;
+  target_types: string[];
+  benefits: string[];
+  created_at: string /* RFC3339 */;
+  last_updated: string /* RFC3339 */;
+  created_by?: PlatformUser /* from eureka-dovewing.ts */; // CreatedByID must be parsed internally
+  updated_by?: PlatformUser /* from eureka-dovewing.ts */; // UpdatedByID must be parsed internally
+  duration: number /* int64 */;
+  description: string;
+}
+/**
+ * @ci table=shop_coupons
+ * ShopCoupon represents a coupon that can be used to get a discount/complete price removal on a shop item.
+ */
+export interface ShopCoupon {
+  id: string;
+  code: string;
+  public: boolean;
+  max_uses?: number /* int */;
+  cents?: number /* float64 */;
+  requirements: string[];
+  allowed_users: string[];
+  created_at: string /* RFC3339 */;
+  last_updated: string /* RFC3339 */;
+  created_by?: PlatformUser /* from eureka-dovewing.ts */; // CreatedByID must be parsed internally
+  updated_by?: PlatformUser /* from eureka-dovewing.ts */; // UpdatedByID must be parsed internally
+  reuse_wait_duration?: number /* int */;
+  expiry?: number /* int */;
+  applicable_items: string[];
+  usable: boolean;
+  target_types: string[];
 }
 
 //////////
@@ -704,9 +803,6 @@ export interface StatusDocs {
   key2: string;
   key3: string;
   etc: string;
-}
-export interface StaffTeam {
-  members: UserPerm[];
 }
 
 //////////
@@ -756,17 +852,21 @@ export interface PermissionData {
 export interface Team {
   id: string;
   name: string;
-  avatar?: AssetMetadata;
-  banner?: AssetMetadata;
+  avatar?: AssetMetadata; // This is an asset that must be validated/loaded from CDN
+  banner?: AssetMetadata; // This is an asset that must be validated/loaded from CDN
   short: string | null /* nullable */;
   tags: string[];
   vote_banned: boolean;
-  votes: number /* int */;
+  approximate_votes: number /* int */;
+  votes: number /* int */; // Votes are retrieved from entity_votes
   extra_links: Link[];
   entities?: TeamEntities; // Must be handled internally
   nsfw: boolean;
   vanity_ref: string /* uuid */;
   vanity: string; // Must be parsed internally
+  service: string;
+  created_at: string /* RFC3339 */;
+  updated_at: string /* RFC3339 */;
 }
 export interface TeamBulkFetch {
   teams: Team[];
@@ -777,10 +877,16 @@ export interface TeamEntities {
   bots?: IndexBot[];
   servers?: IndexServer[];
 }
+/**
+ * @ci table=team_members
+ * Team Member represents a member of a team on Infinity List.
+ */
 export interface TeamMember {
   itag: string /* uuid */;
-  user?: PlatformUser /* from eureka-dovewing.ts */;
+  team_id: string;
+  user?: PlatformUser /* from eureka-dovewing.ts */; // Must be handled internally
   flags: string[];
+  service: string;
   created_at: string /* RFC3339 */;
   mentionable: boolean;
   data_holder: boolean;
@@ -803,13 +909,9 @@ export interface AddTeamMember {
   perms: string[];
 }
 export interface EditTeamMember {
-  perm_update?: PermissionUpdate;
+  perms?: string[];
   mentionable?: boolean;
   data_holder?: boolean;
-}
-export interface PermissionUpdate {
-  add: string[];
-  remove: string[];
 }
 export interface UserEntityPerms {
   perms: string[];
@@ -854,7 +956,7 @@ export interface Attachment {
 export type UserExperiment = string;
 export const ServerListingUserExperiment: UserExperiment = "SERVER_LISTING";
 /**
- * @ci table=users
+ * @ci table=users ignore_fields=api_token
  */
 export interface User {
   itag: string /* uuid */;
@@ -868,16 +970,49 @@ export interface User {
   about: string | null /* nullable */;
   vote_banned: boolean;
   banned: boolean;
+  staff: boolean; // Must be handled internally
   user_teams: Team[]; // Must be handled internally
   user_bots: IndexBot[]; // Must be handled internally
-  user_packs: IndexBotPack[]; // Must be handled internally
+  user_packs: BotPack[]; // Must be handled internally
+  created_at: string /* RFC3339 */;
+  updated_at: string /* RFC3339 */;
+  last_booster_claim?: string /* RFC3339 */;
 }
 export interface UserPerm {
   user?: PlatformUser /* from eureka-dovewing.ts */; // Must be handled internally
+  staff: boolean; // Must be handled internally
   experiments: string[];
   banned: boolean;
   captcha_sponsor_enabled: boolean;
   vote_banned: boolean;
+}
+/**
+ * @ci table=staff_members unfilled=1
+ */
+export interface StaffMember {
+  user?: PlatformUser /* from eureka-dovewing.ts */; // Must be handled internally
+  positions: StaffPosition[]; // Must be handled internally
+  perm_overrides: string[];
+  no_autosync: boolean;
+  mfa_verified: boolean;
+  unaccounted: boolean;
+  created_at: string /* RFC3339 */;
+}
+/**
+ * @ci table=staff_positions
+ */
+export interface StaffPosition {
+  id: string /* uuid */;
+  name: string;
+  role_id: string;
+  perms: string[];
+  created_at: string /* RFC3339 */;
+  index: number /* int */;
+  corresponding_roles: Link[];
+  icon: string;
+}
+export interface StaffTeam {
+  members: StaffMember[];
 }
 export interface ProfileUpdate {
   about: string;
@@ -887,6 +1022,20 @@ export interface ProfileUpdate {
 export interface BoosterStatus {
   remark?: string;
   is_booster: boolean;
+}
+
+//////////
+// source: vanity.go
+
+export interface Vanity {
+  itag: string /* uuid */;
+  target_id: string;
+  target_type: string;
+  code: string;
+  created_at: string /* RFC3339 */;
+}
+export interface PatchVanity {
+  code: string;
 }
 
 //////////
@@ -907,6 +1056,8 @@ export interface EntityVote {
   voided_at: any /* pgtype.Timestamp */;
   created_at: string /* RFC3339 */;
   vote_num: number /* int */;
+  credit_redeem: string /* uuid */;
+  immutable: boolean;
 }
 /**
  * Vote Info
@@ -914,6 +1065,10 @@ export interface EntityVote {
 export interface VoteInfo {
   per_user: number /* int */;
   vote_time: number /* uint16 */;
+  vote_credits: boolean;
+  multiple_votes: boolean;
+  supports_upvotes: boolean;
+  supports_downvotes: boolean;
 }
 /**
  * Stores the hours, minutes and seconds until the user can vote again
@@ -923,28 +1078,66 @@ export interface VoteWait {
   minutes: number /* int */;
   seconds: number /* int */;
 }
-export interface ValidVote {
-  upvote: boolean;
-  created_at: string /* RFC3339 */;
-}
 /**
  * A user vote is a struct containing basic info on a users vote
  */
 export interface UserVote {
   has_voted: boolean;
-  valid_votes: (ValidVote | undefined)[];
+  valid_votes: EntityVote[];
   vote_info?: VoteInfo;
   wait?: VoteWait;
 }
 export interface HCaptchaInfo {
   site_key: string;
 }
+/**
+ * @ci table=vote_credit_tiers
+ * VoteCreditTier represents a vote credit tier.
+ */
+export interface VoteCreditTier {
+  id: string;
+  target_type: string;
+  position: number /* int */;
+  votes: number /* int */;
+  cents: number /* int */;
+  created_at: string /* RFC3339 */;
+}
+/**
+ * Represents a summary of what would happen on redeeming vote credit tiers
+ */
+export interface VoteCreditTierRedeemSummary {
+  tiers: (VoteCreditTier | undefined)[];
+  votes: number /* int */;
+  slab_overview: number /* int */[];
+  total_credits: number /* int */;
+}
+/**
+ * Represents a vote credit redeem log
+ */
+export interface EntityVoteRedeemLog {
+  id: string /* uuid */;
+  target_id: string;
+  target_type: string;
+  credits: number /* int */;
+  redeemed_credits: number /* int */;
+  created_at: string /* RFC3339 */;
+  redeemed_at?: string /* RFC3339 */;
+}
+/**
+ * Summary of the entity vote redeem log
+ */
+export interface EntityVoteRedeemLogSummary {
+  redeems: (EntityVoteRedeemLog | undefined)[];
+  total_credits: number /* int */;
+  available_credits: number /* int */;
+  redeemed_credits: number /* int */;
+}
 
 //////////
 // source: webhook.go
 
 /**
- * @ci table=webhooks
+ * @ci table=webhooks unfilled=1
  * Represents a webhook on IBL
  */
 export interface Webhook {
@@ -954,9 +1147,20 @@ export interface Webhook {
   target_type: string;
   url: string;
   broken: boolean;
+  failed_requests: number /* int */;
   simple_auth: boolean;
   event_whitelist: string[];
   created_at: string /* RFC3339 */;
+}
+/**
+ * Represents the data to be sent to create a webhook
+ */
+export interface CreateEditWebhook {
+  name: string;
+  url: string;
+  secret: string;
+  simple_auth: boolean;
+  event_whitelist: string[];
 }
 export type WebhookType = string;
 export const WebhookTypeText: WebhookType = "text";
@@ -984,15 +1188,8 @@ export interface WebhookLogEntry {
   last_try: string /* RFC3339 */;
   bad_intent: boolean;
   status_code: number /* int */;
-}
-export interface PatchWebhook {
-  webhook_id: string;
-  name: string;
-  webhook_url: string;
-  webhook_secret: string;
-  simple_auth: boolean;
-  event_whitelist: string[];
-  delete: boolean;
+  request_headers: { [key: string]: any};
+  response_headers: { [key: string]: any};
 }
 export interface GetTestWebhookMeta {
   data: TestWebhookType[];

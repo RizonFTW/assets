@@ -2,4 +2,4 @@
 import type { Partner } from "./Partner";
 import type { PartnerType } from "./PartnerType";
 
-export interface Partners { partners: Array<Partner>, partner_types: Array<PartnerType>, }
+export type Partners = { partners: Array<Partner>, partner_types: Array<PartnerType>, };
