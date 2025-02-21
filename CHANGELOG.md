@@ -1,3 +1,17 @@
+# 5.0.0-master.4 (2025-02-20 23:20)
+
+## Added 
+- Added Tabs to bot pages for Description, Updates and Reviews
+- Added Server Count and Average Reviews to Bot Cards
+
+## Changes
+- Changed link icons to have the icon of what the link is
+- You can now use Vanity URLs for /settings
+- Improved the UI on Teams Page
+- Team Cards & Server Cards have been updated to the new card design.
+- Changed Teams Permission Edit to a modal
+- Updated the Team Members Cards
+
 # 5.0.0-master.1 (2024-06-15 20:41:33.655586+00:00)
 
 Welcome to the all new and improved Infinity List v5. Featuring a ton of new improvements and changes. This change log may not state everything that has been changed but it will state the important stuff!
